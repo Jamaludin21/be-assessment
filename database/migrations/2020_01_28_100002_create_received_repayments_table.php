@@ -21,7 +21,7 @@ class CreateReceivedRepaymentsTable extends Migration
                 ->restrictOnDelete();
 
             // kolom yang hilang (wajib untuk Test #02):
-            $table->dateTime('paid_at');
+            $table->dateTime('received_at');
             $table->integer('amount');
             $table->string('notes')->nullable();
 

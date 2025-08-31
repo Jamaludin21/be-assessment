@@ -1,71 +1,119 @@
-## Backend Assessment Test
-### Setup procedure
-1. Checkout a new feature branch from `master`
-2. Do commit for every function updates
-3. Push the code and prepare the Pull Request from feature branch to master branch
+# Loan Service – Task #2 Progress
 
-### Test #01
-#### Objective
-Create feature tests to test *DebitCard* and *DebitCardTransaction* endpoints and relatives policies, validations and resources.
+## 📌 Objective
 
-#### Business Logic
-Each customer can have multiple *Debit Cards* and each debit card can have many *Debit Card Transactions*.
+Implement a **Loan Service** that handles loan creation and repayments, ensuring all unit tests (`LoanServiceTest`) pass without modifying the tests themselves.
 
-- The customer should be able to create, update, read and delete his debit cards. 
-- For each debit card the customer should be able to read and create debit card transactions.
+### Requirements
 
-##### Debit cards endpoints:
-- **get** `/debit-cards`
-- **post** `/debit-cards`
-- **get** `/debit-cards/{debitCard}`
-- **put** `/debit-cards/{debitCard}`
-- **delete** `/debit-cards/{debitCard}`
-
-##### Debit card transactions endpoints *(optional/bonus point)*:
-- **get** `/debit-card-transactions`
-- **post** `/debit-card-transactions`
-- **get** `/debit-card-transactions/{debitCardTransaction}`
-
-For each endpoint there are specific condition and validation to asserts
-
-#### Challenge
-Read through the *DebitCard* and *DebitCardTransaction* routes, controllers, requests, resources and policies. 
-Understand the logic and write as much tests as possible to validate the endpoints. The `DebitCardControllerTest` and `DebitCardTransactionTest` are already created you just need to complete them.
-
-Tips:
-
-- verify positive and negative scenarios
-- assert response and database values
-- customer can handle only his own debit cards
-
-**IMPORTANT:** For this challenge you SHOULD ONLY update the feature tests
+-   Migrations for:
+    -   `scheduled_repayments`
+    -   `received_repayments`
+    -   (loans table already existed, but required adjustments)
+-   Models:
+    -   `Loan`
+    -   `ScheduledRepayment`
+    -   `ReceivedRepayment`
+-   `LoanService` class implementing:
+    -   `createLoan()`
+    -   `repayLoan()`
+-   Constraints:
+    -   **Should not edit the unit test files**
+    -   Ensure compatibility with Laravel 8 and PHPUnit
 
 ---
 
-### Test #02
+## ✅ Work Completed
 
-#### Objective
-Create a Loan service to handle repayments based on complete unit tests already created.
+1. **Migrations**
 
-#### Business Logic
-Each customer can have a credit *loan* (due in 3 or 6 months). So a Loan has 3 or 6 *scheduled repayments* (once each month),
-and it can be repaid with *received repayments*.
-Example:
+    - Created `scheduled_repayments` table with:
+        - `loan_id`, `due_date`, `amount`, `outstanding_amount`, `currency_code`, `status`
+    - Created `received_repayments` table with:
+        - `loan_id`, `received_at`, `amount`, `currency_code`, `notes`
+    - Adjusted `loans` table to include:
+        - `terms`, `outstanding_amount`, `currency_code`, `processed_at`, `status`
 
-Loan of 3 months, amount 3000$, created on 2021-01-01
+2. **Models**
 
-- Scheduled Repayment of 1000$ due to 2021-02-01
-- Scheduled Repayment of 1000$ due to 2021-03-01
-- Scheduled Repayment of 1000$ due to 2021-04-01
+    - `Loan`:
+        - Relations to `User` and `ScheduledRepayment`
+        - Status constants (`STATUS_DUE`, `STATUS_REPAID`)
+        - Currency constants
+    - `ScheduledRepayment`:
+        - Belongs to `Loan`
+        - Status constants (`STATUS_DUE`, `STATUS_PARTIAL`, `STATUS_REPAID`)
+    - `ReceivedRepayment`:
+        - Belongs to `Loan`
 
-A customer can repay the full amount of each single scheduled repayment, but also he can repay partially or in full
+3. **Factories**
 
-#### Challenge
-Read through the tests of LoanService to understand what is the logic to be implemented. All classes and files are already created, you just need to complete them.
-In order to make the unit tests passed, you need to fulfil:
+    - Factories implemented for Loan, ScheduledRepayment, and ReceivedRepayment to support unit tests.
 
-- the migrations/factories for scheduled_repayments and received_repayment tables (migration for loans table already done);
-- the Loan, ScheduledRepayment, and ReceivedRepayment Models;
-- the LoanService class;
+4. **LoanService Implementation (in progress)**
+    - Logic mapped out from tests:
+        - Split loan amount across terms (handle rounding properly)
+        - Generate due dates monthly from `processed_at`
+        - Create repayments in FIFO order
+        - Apply repayments to scheduled repayments (partial/full logic)
+        - Update loan status (`due` → `repaid`) when `outstanding_amount=0`
 
-**IMPORTANT:** For this challenge you SHOULD NOT update the unit test
+---
+
+## ❌ Issues & Debugging
+
+1. **Column mismatch errors**
+
+    - Initially missing `terms` field in `loans`.
+    - Later conflict with `start_date` column (legacy migration).
+    - Fixed by adjusting migrations.
+
+2. **Doctrine DBAL dependency**
+
+    - Error: _"Changing columns for table 'loans' requires Doctrine DBAL"_
+    - Root cause: migrations used `->change()` with SQLite.
+    - Attempted install of DBAL v2.13 caused version conflicts.
+    - Solution: should install **doctrine/dbal ^3** as dev dependency:
+        ```bash
+        composer require --dev doctrine/dbal:^3 --with-all-dependencies
+        ```
+
+3. **SQLite limitation**
+
+    - PHPUnit XML still configured for SQLite (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`).
+    - Errors: _"SQLite doesn't support multiple calls to dropColumn/renameColumn"_
+    - Fix: switch tests to MySQL by updating `phpunit.xml`:
+        ```xml
+        <server name="DB_CONNECTION" value="mysql"/>
+        <server name="DB_DATABASE" value="be_assessment_test"/>
+        <server name="DB_USERNAME" value="root"/>
+        <server name="DB_PASSWORD" value=""/>
+        ```
+    - Or create a dedicated `.env.testing` for MySQL.
+
+4. **Current Blocker**
+    - Tests are failing because migrations are being applied under **SQLite in-memory DB**, which is incompatible with multiple `dropColumn` / `renameColumn`.
+    - Next step: fully migrate test DB to **MySQL**.
+
+---
+
+## 🚀 Next Steps
+
+1. Switch PHPUnit test environment from SQLite to MySQL.
+2. Re-run migrations under MySQL test database.
+3. Finalize `LoanService` logic (repayment allocation, loan status updates).
+4. Ensure all **LoanServiceTest** cases pass:
+    - `service can create loan of for a customer`
+    - `service can repay a scheduled repayment`
+    - `service can repay a scheduled repayment consecutively`
+    - `service can repay multiple scheduled repayments`
+
+---
+
+## 📊 Current Status
+
+-   **Migrations**: ✅ done
+-   **Models**: ✅ done
+-   **Factories**: ✅ done
+-   **LoanService**: 🚧 in progress
+-   **Tests**: ❌ 4 failed / 0 passed (`LoanServiceTest`)
