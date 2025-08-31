@@ -14,22 +14,20 @@ class CreateLoansTable extends Migration
     public function up()
     {
         Schema::create('loans', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedInteger('user_id');
-            $table->integer('amount');
-            $table->integer('terms');
-            $table->integer('outstanding_amount');
-            $table->string('currency_code');
-            $table->date('processed_at');
-            $table->string('status');
+            $table->id(); // unsigned BIGINT
+            // WAJIB sama tipe dengan users.id
+            $table->foreignId('user_id')
+                ->constrained('users')
+                ->cascadeOnUpdate()
+                ->restrictOnDelete();
+
+            // kolom lain (silakan sesuaikan)
+            $table->integer('amount');                // nominal pinjaman
+            $table->char('currency_code', 3);         // e.g. 'IDR'
+            $table->tinyInteger('term_months');       // 3 atau 6
+            $table->date('start_date');               // tanggal mulai/akad
             $table->timestamps();
             $table->softDeletes();
-
-            $table->foreign('user_id')
-                ->references('id')
-                ->on('users')
-                ->onUpdate('cascade')
-                ->onDelete('restrict');
         });
     }
 

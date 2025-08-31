@@ -15,18 +15,18 @@ class CreateReceivedRepaymentsTable extends Migration
     {
         Schema::create('received_repayments', function (Blueprint $table) {
             $table->id();
-            $table->unsignedInteger('loan_id');
+            $table->foreignId('loan_id')
+                ->constrained('loans')
+                ->cascadeOnUpdate()
+                ->restrictOnDelete();
 
-            // TODO: Add missing columns here
+            // kolom yang hilang (wajib untuk Test #02):
+            $table->dateTime('received_at');
+            $table->integer('amount');
+            $table->string('notes')->nullable();
 
             $table->timestamps();
             $table->softDeletes();
-
-            $table->foreign('loan_id')
-                ->references('id')
-                ->on('loans')
-                ->onUpdate('cascade')
-                ->onDelete('restrict');
         });
     }
 

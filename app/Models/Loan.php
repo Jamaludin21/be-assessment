@@ -9,26 +9,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Loan extends Model
 {
+    use HasFactory;
+
     public const STATUS_DUE = 'due';
     public const STATUS_REPAID = 'repaid';
 
     public const CURRENCY_SGD = 'SGD';
     public const CURRENCY_VND = 'VND';
 
-    use HasFactory;
-
-    /**
-     * The table associated with the model.
-     *
-     * @var string
-     */
     protected $table = 'loans';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [
         'user_id',
         'amount',
@@ -39,23 +29,21 @@ class Loan extends Model
         'status',
     ];
 
-    /**
-     * A Loan belongs to a User
-     *
-     * @return BelongsTo
-     */
-    public function user()
+    protected $dates = ['processed_at'];
+
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    /**
-     * A Loan has many Scheduled Repayments
-     *
-     * @return HasMany
-     */
-    public function scheduledRepayments()
+    public function scheduledRepayments(): HasMany
     {
-        return $this->hasMany(ScheduledRepayment::class, 'loan_id');
+        return $this->hasMany(ScheduledRepayment::class, 'loan_id')
+            ->orderBy('due_date', 'asc');
+    }
+
+    public function receivedRepayments(): HasMany
+    {
+        return $this->hasMany(ReceivedRepayment::class, 'loan_id');
     }
 }
